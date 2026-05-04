@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Réservations – ParkManager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <img th:src="@{/images/parking.png}" alt="Logo" style="width: 32px; height: 32px;">
+                </div>
+                <div>
+                    <h2>ParkManager</h2>
+                    <small>Espace Client</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a th:href="@{/client/dashboard}">
+                    <span class="nav-icon">
+                        <img th:src="@{/images/accueil.png}" alt="Accueil" style="width: 18px; height: 18px; vertical-align: middle;">
+                    </span> 
+                    Accueil
+                </a>
+                <a th:href="@{/client/carte}">
+                    <span class="nav-icon">
+                        <img th:src="@{/images/emplacement.png}" alt="Carte" style="width: 18px; height: 18px; vertical-align: middle;">
+                    </span> 
+                    Carte des parkings
+                </a>
+                <a th:href="@{/client/reserver}">
+                    <span class="nav-icon">
+                        <img th:src="@{/images/ajouter.png}" alt="Ajouter" style="width: 18px; height: 18px; vertical-align: middle;">
+                    </span> 
+                    Réserver une place
+                </a>
+                <a th:href="@{/client/reservations}" class="active">
+                    <span class="nav-icon">
+                        <img th:src="@{/images/programme.png}" alt="Reservations" style="width: 18px; height: 18px; vertical-align: middle;">
+                    </span> 
+                    Mes réservations
+                </a>
+                <a th:href="@{/client/vehicules}">
+                    <span class="nav-icon">
+                        <img th:src="@{/images/auto.png}" alt="Vehicules" style="width: 18px; height: 18px; vertical-align: middle;">
+                    </span> 
+                    Mes véhicules
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a th:href="@{/logout}">
+                    <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                    Déconnexion
+                </a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h1>
+                    <img th:src="@{/images/programme.png}" alt="Reservations" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+                    Gestion des Réservations
+                </h1>
+                <div class="topbar-right">
+                    <a th:href="@{/client/reserver}" class="btn btn-primary">
+                        <img th:src="@{/images/ajouter.png}" alt="Ajouter" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+                        Nouvelle réservation
+                    </a>
+                </div>
+            </div>
+
+            <div class="page-body">
+                <!-- Tabs Header -->
+                <div class="tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-btn active" onclick="openTab(event, 'actives')">
+                            <img th:src="@{/images/calendrier.png}" alt="Calendrier" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 5px;">
+                            Actives <span class="badge" th:text="${reservations.size()}">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="openTab(event, 'historique')">
+                            <img th:src="@{/images/archiver.png}" alt="Historique" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 5px;">
+                            Historique <span class="badge" th:text="${historique.size()}">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="openTab(event, 'annulees')">
+                            <img th:src="@{/images/annuler.png}" alt="Annuler" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 5px;">
+                            Annulées <span class="badge" th:text="${annulees.size()}">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab: Actives -->
+                    <div id="actives" class="tab-content active">
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Parking</th>
+                                            <th>Véhicule</th>
+                                            <th>Début</th>
+                                            <th>Fin</th>
+                                            <th>Statut</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="r : ${reservations}">
+                                            <td th:text="${r.place.parking.nom}">Parking Central</td>
+                                            <td th:text="${r.vehicule.marque + ' ' + r.vehicule.modele}">Peugeot 208</td>
+                                            <td th:text="${#temporals.format(r.dateDebut, 'dd/MM/yyyy HH:mm')}">01/01/2024</td>
+                                            <td th:text="${#temporals.format(r.dateFin, 'dd/MM/yyyy HH:mm')}">01/01/2024</td>
+                                            <td>
+                                                <span class="badge" 
+                                                      th:classappend="${r.statut == 'EN_ATTENTE' ? 'badge-warning' : 
+                                                                       r.statut == 'VALIDEE' ? 'badge-success' : 
+                                                                       r.statut == 'REFUSEE' || r.statut == 'ANNULEE' ? 'badge-danger' : 
+                                                                       r.statut == 'TERMINEE' ? 'badge-secondary' : 'badge-info'}"
+                                                      th:text="${r.statut}">VALIDEE</span>
+                                            </td>
+                                            <td>
+                                                <div class="table-actions">
+                                                    <a th:if="${r.statut == 'VALIDEE'}" 
+                                                       th:href="@{/client/reservations/payer/{id}(id=${r.id})}" 
+                                                       class="btn btn-success btn-sm">💳 Payer</a>
+                                                    <a th:if="${r.statut == 'EN_ATTENTE' || r.statut == 'VALIDEE'}" 
+                                                       th:href="@{/client/reservations/annuler/{id}(id=${r.id})}" 
+                                                       class="btn btn-danger btn-sm"
+                                                       onclick="return confirm('Annuler cette réservation ?')">
+                                                        <img th:src="@{/images/annuler.png}" alt="X" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 5px; filter: brightness(0) invert(1);">
+                                                        Annuler
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${reservations.empty}">
+                                            <td colspan="6" class="text-center py-8">
+                                                <div class="empty-state">
+                                                    <div class="empty-icon">
+                                                        <img th:src="@{/images/programme.png}" alt="Empty" style="width: 48px; height: 48px; opacity: 0.5;">
+                                                    </div>
+                                                    <p>Aucune réservation active</p>
+                                                    <a th:href="@{/client/reserver}" class="btn btn-primary" style="margin-top:0.75rem;">Réserver maintenant</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Historique -->
+                    <div id="historique" class="tab-content">
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Parking</th>
+                                            <th>Véhicule</th>
+                                            <th>Période</th>
+                                            <th>Montant</th>
+                                            <th>Paiement</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="r : ${historique}">
+                                            <td th:text="${r.place.parking.nom}">Parking Central</td>
+                                            <td th:text="${r.vehicule.marque + ' ' + r.vehicule.modele}">Peugeot 208</td>
+                                            <td>
+                                                <small th:text="${#temporals.format(r.dateDebut, 'dd/MM HH:mm')}">Du...</small><br>
+                                                <small th:text="${#temporals.format(r.dateFin, 'dd/MM HH:mm')}">Au...</small>
+                                            </td>
+                                            <td th:text="${r.paiement != null ? r.paiement.montant + ' DT' : '-'}">20 DT</td>
+                                            <td>
+                                                <span th:if="${r.paiement != null && r.paiement.statut == 'PAYE'}" class="badge badge-success">✅ Payé</span>
+                                                <span th:if="${r.paiement == null || r.paiement.statut != 'PAYE'}" class="badge badge-warning">Non payé</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-secondary">Terminée</span>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${historique.empty}">
+                                            <td colspan="6" class="text-center py-8">
+                                                <div class="empty-state">
+                                                    <div class="empty-icon">
+                                                        <img th:src="@{/images/archiver.png}" alt="Empty" style="width: 48px; height: 48px; opacity: 0.5;">
+                                                    </div>
+                                                    <p>Aucun historique de réservation</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Annulées -->
+                    <div id="annulees" class="tab-content">
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Parking</th>
+                                            <th>Véhicule</th>
+                                            <th>Prévu le</th>
+                                            <th>Statut</th>
+                                            <th>Motif</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="r : ${annulees}">
+                                            <td th:text="${r.place.parking.nom}">Parking Central</td>
+                                            <td th:text="${r.vehicule.marque + ' ' + r.vehicule.modele}">Peugeot 208</td>
+                                            <td th:text="${#temporals.format(r.dateDebut, 'dd/MM/yyyy')}">01/01/2024</td>
+                                            <td>
+                                                <span th:class="'badge badge-' + ${#strings.toLowerCase(r.statut)}" 
+                                                      th:text="${r.statut}">ANNULEE</span>
+                                            </td>
+                                            <td th:text="${r.statut == 'REFUSEE' ? 'Refusé par l\'admin' : 'Annulé par vous'}">Motif</td>
+                                        </tr>
+                                        <tr th:if="${annulees.empty}">
+                                            <td colspan="5" class="text-center py-8">
+                                                <div class="empty-state">
+                                                    <div class="empty-icon">
+                                                        <img th:src="@{/images/annuler.png}" alt="Empty" style="width: 48px; height: 48px; opacity: 0.5;">
+                                                    </div>
+                                                    <p>Aucune réservation annulée</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+</body>
+</html>

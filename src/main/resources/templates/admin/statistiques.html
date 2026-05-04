@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques du Parking – ParkManager</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .chart-container {
+            background: var(--bg-surface);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-neon);
+            border: 1px solid var(--border-glow);
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 250px;
+        }
+        .chart-title {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-wrapper">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🅿️</div>
+            <div>
+                <h2 th:text="${parking.nom}">Parking</h2>
+                <small>Administration</small>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}"><span class="nav-icon">📊</span> Tableau de bord</a>
+            <a th:href="@{/admin/places}"><span class="nav-icon">🔲</span> Places</a>
+            <a th:href="@{/admin/tarifs}"><span class="nav-icon">💰</span> Tarifs</a>
+            <a th:href="@{/admin/reservations}"><span class="nav-icon">📋</span> Réservations</a>
+            <a th:href="@{/admin/statistiques}" class="active"><span class="nav-icon">📈</span> Statistiques</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a th:href="@{/logout}">
+                <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>📈 Statistiques du Parking</h1>
+            </div>
+            <div class="topbar-right">
+                <div class="flex gap-2">
+                    <div class="dropdown-export">
+                        <button class="btn btn-outline-success btn-sm">📊 Exporter les données ▼</button>
+                        <div class="dropdown-content">
+                            <a th:href="@{/admin/export/statistiques/excel}">Excel (.xlsx)</a>
+                            <a th:href="@{/admin/export/statistiques/pdf}">PDF (.pdf)</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-body">
+            <!-- Global Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">📋</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${stat.nombreReservations}">0</div>
+                        <div class="stat-label">Total réservations</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon teal">💰</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${#numbers.formatDecimal(stat.revenus, 1, 2) + ' DT'}">0 DT</div>
+                        <div class="stat-label">Revenus totaux</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${#lists.size(reservations.?[statut == 'TERMINEE'])}">0</div>
+                        <div class="stat-label">Réservations terminées</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">⏳</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${#lists.size(reservations.?[statut == 'EN_ATTENTE'])}">0</div>
+                        <div class="stat-label">En attente</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <!-- Chart: Reservations by Day -->
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <img th:src="@{/images/calendrier.png}" alt="Calendrier" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+                        Évolution des réservations
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="reservationsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart: Occupancy Status -->
+                <div class="chart-container">
+                    <div class="chart-title">🚗 Occupation des places</div>
+                    <div class="chart-wrapper">
+                        <canvas id="occupancyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>
+                        <img th:src="@{/images/archiver.png}" alt="Historique" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+                        Historique des réservations
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Client</th><th>Véhicule</th><th>Place</th><th>Début</th><th>Fin</th><th>Montant</th><th>Statut</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="r : ${reservations}">
+                                <td>
+                                    <strong th:text="${r.client.nom}"></strong><br>
+                                    <small class="text-muted" th:text="${r.client.email}"></small>
+                                </td>
+                                <td th:text="${r.vehicule.immatriculation}"></td>
+                                <td th:text="${'N°' + r.place.numero}"></td>
+                                <td th:text="${#temporals.format(r.dateDebut,'dd/MM/yyyy HH:mm')}"></td>
+                                <td th:text="${#temporals.format(r.dateFin,'dd/MM/yyyy HH:mm')}"></td>
+                                <td th:text="${r.paiement != null ? #numbers.formatDecimal(r.paiement.montant,1,2) + ' DT' : '–'}"></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${r.statut == 'EN_ATTENTE' ? 'badge-warning' :
+                                                           r.statut == 'VALIDEE' ? 'badge-success' :
+                                                           r.statut == 'TERMINEE' ? 'badge-secondary' : 'badge-danger'}"
+                                          th:text="${r.statut}"></span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/admin/reservations/supprimer/{id}(id=${r.id})}"
+                                       class="btn btn-danger btn-sm"
+                                       title="Supprimer la réservation"
+                                       onclick="return confirm('Supprimer cette réservation ?')">
+                                        <img th:src="@{/images/supprimer.png}" alt="🗑️" style="width: 14px; height: 14px; filter: brightness(0) invert(1);">
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script th:inline="javascript">
+    /* Data from Thymeleaf */
+    const reservationsByDay = /*[[${reservationsByDay}]]*/ {};
+    const placesLibres = /*[[${placesLibres}]]*/ 0;
+    const placesOccupees = /*[[${placesOccupees}]]*/ 0;
+
+    // 1. Reservations by Day Chart
+    const resLabels = Object.keys(reservationsByDay);
+    const resData = Object.values(reservationsByDay);
+    new Chart(document.getElementById('reservationsChart'), {
+        type: 'line',
+        data: {
+            labels: resLabels.length > 0 ? resLabels : ['Aucune donnée'],
+            datasets: [{
+                label: 'Réservations',
+                data: resData.length > 0 ? resData : [0],
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    // 2. Occupancy Chart
+    new Chart(document.getElementById('occupancyChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Libres', 'Occupées'],
+            datasets: [{
+                data: [placesLibres, placesOccupees],
+                backgroundColor: ['#22c55e', '#ef4444'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            cutout: '70%'
+        }
+    });
+</script>
+</body>
+</html>

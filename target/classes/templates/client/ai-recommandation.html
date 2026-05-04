@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA – Recommandation Parking – ParkManager</title>
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+:root {
+    --ai-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    --ai-glow: 0 0 30px rgba(99, 102, 241, 0.4);
+    --gold: #f59e0b;
+    --silver: #9ca3af;
+    --bronze: #cd7c2f;
+}
+
+.ai-hero {
+    background: var(--ai-gradient);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--ai-glow);
+}
+
+.ai-hero::before {
+    content: '🤖';
+    position: absolute;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 5rem;
+    opacity: 0.2;
+}
+
+.ai-hero h2 { margin: 0 0 0.5rem; font-size: 1.8rem; }
+.ai-hero p  { margin: 0; opacity: 0.9; font-size: 0.95rem; }
+
+/* Controls card */
+.ai-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+@media(max-width:768px){ .ai-controls { grid-template-columns: 1fr; } }
+
+.control-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+}
+
+.control-card h4 { margin: 0 0 1rem; display:flex; align-items:center; gap:.5rem; }
+
+/* Sliders */
+.weight-slider-wrap { margin-bottom: 1rem; }
+.weight-slider-wrap label { display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:.4rem; }
+.weight-slider-wrap label span { font-weight:700; color:var(--primary); }
+input[type=range] {
+    width: 100%;
+    accent-color: #6366f1;
+    height: 6px;
+    border-radius: 3px;
+}
+
+/* Résultats */
+.results-grid { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.reco-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.reco-card:hover { transform: translateY(-3px); box-shadow: var(--ai-glow); }
+
+.reco-card.rank-1 { border-color: var(--gold); box-shadow: 0 0 20px rgba(245,158,11,.25); }
+.reco-card.rank-2 { border-color: var(--silver); }
+.reco-card.rank-3 { border-color: var(--bronze); }
+
+.reco-header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
+
+.rank-badge {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex; align-items:center; justify-content:center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.rank-1 .rank-badge { background: rgba(245,158,11,.15); }
+.rank-2 .rank-badge { background: rgba(156,163,175,.15); }
+.rank-3 .rank-badge { background: rgba(205,124,47,.15); }
+
+.reco-name { font-size: 1.1rem; font-weight: 700; margin: 0 0 .2rem; }
+.reco-addr { font-size: .8rem; color: var(--text-muted); margin: 0; }
+
+.score-total-wrap { margin-left: auto; text-align:center; }
+.score-total-num { font-size: 2rem; font-weight: 800; background: var(--ai-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.score-total-label { font-size: .7rem; color: var(--text-muted); }
+
+.scores-bars { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem; margin:1rem 0; }
+.score-bar-wrap { }
+.score-bar-label { font-size:.75rem; color:var(--text-muted); margin-bottom:.25rem; display:flex; justify-content:space-between; }
+.score-bar-label strong { color:var(--text); }
+.score-bar-bg { background: var(--border); border-radius:4px; height:8px; overflow:hidden; }
+.score-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+    width: 0;
+}
+.bar-dist  { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+.bar-prix  { background: linear-gradient(90deg,#10b981,#34d399); }
+.bar-dispo { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }
+
+.reco-meta { display:flex; gap:1rem; flex-wrap:wrap; font-size:.82rem; color:var(--text-muted); margin:.75rem 0; }
+.reco-meta span { display:flex; align-items:center; gap:.3rem; }
+
+.reco-explication {
+    background: rgba(99,102,241,.08);
+    border-left: 3px solid #6366f1;
+    border-radius: 0 8px 8px 0;
+    padding: .75rem 1rem;
+    font-size: .85rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.niveau-badge {
+    display:inline-block; padding:.25rem .75rem;
+    border-radius:20px; font-size:.75rem; font-weight:700;
+}
+.niveau-EXCELLENT { background:#dcfce7; color:#166534; }
+.niveau-BON       { background:#dbeafe; color:#1e40af; }
+.niveau-MOYEN     { background:#fef9c3; color:#854d0e; }
+.niveau-FAIBLE    { background:#fee2e2; color:#991b1b; }
+
+.btn-reserver-ai {
+    background: var(--ai-gradient);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: .6rem 1.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: .88rem;
+    transition: opacity .2s, transform .2s;
+}
+.btn-reserver-ai:hover { opacity: .9; transform: scale(1.03); color:white; }
+
+/* Loading */
+.ai-loading {
+    text-align: center;
+    padding: 3rem;
+    display: none;
+}
+.ai-spinner {
+    width: 60px; height: 60px;
+    border: 4px solid var(--border);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ai-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    display: none;
+}
+.ai-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+/* Geoloc section */
+.geo-section { display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; }
+.geo-section .form-group { flex:1; min-width:120px; margin-bottom:0; }
+.btn-geo {
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: .65rem 1.2rem;
+    cursor: pointer;
+    font-weight:600;
+    white-space:nowrap;
+    transition: background .2s;
+    display: flex; align-items:center; gap:.4rem;
+}
+.btn-geo:hover { background:#4f46e5; }
+
+.btn-search {
+    width:100%;
+    background: var(--ai-gradient);
+    color:white;
+    border:none;
+    border-radius:12px;
+    padding:1rem;
+    font-size:1rem;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:1rem;
+    transition: opacity .2s, transform .2s;
+    display:flex; align-items:center; justify-content:center; gap:.5rem;
+}
+.btn-search:hover { opacity:.9; transform:scale(1.01); }
+
+.weight-total-warn {
+    font-size:.8rem;
+    margin-top:.5rem;
+    padding:.5rem;
+    border-radius:8px;
+    text-align:center;
+    display:none;
+}
+.warn-bad  { background:#fee2e2; color:#991b1b; display:block; }
+.warn-good { background:#dcfce7; color:#166534; display:block; }
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🅿️</div>
+            <div><h2>ParkManager</h2><small>Espace Client</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/client/dashboard}">
+                <span class="nav-icon"><img th:src="@{/images/accueil.png}" alt="Accueil" style="width:18px;height:18px;vertical-align:middle;"></span>
+                Accueil
+            </a>
+            <a th:href="@{/client/carte}">
+                <span class="nav-icon"><img th:src="@{/images/emplacement.png}" alt="Carte" style="width:18px;height:18px;vertical-align:middle;"></span>
+                Carte des parkings
+            </a>
+            <a th:href="@{/client/reserver}">
+                <span class="nav-icon"><img th:src="@{/images/ajouter.png}" alt="Ajouter" style="width:18px;height:18px;vertical-align:middle;"></span>
+                Réserver une place
+            </a>
+            <a th:href="@{/client/reservations}">
+                <span class="nav-icon"><img th:src="@{/images/programme.png}" alt="Reservations" style="width:18px;height:18px;vertical-align:middle;"></span>
+                Mes réservations
+            </a>
+            <a th:href="@{/client/vehicules}">
+                <span class="nav-icon"><img th:src="@{/images/auto.png}" alt="Vehicules" style="width:18px;height:18px;vertical-align:middle;"></span>
+                Mes véhicules
+            </a>
+            <a th:href="@{/client/ai}" class="active" style="background:rgba(99,102,241,.15);border-left:3px solid #6366f1;">
+                <span class="nav-icon">🤖</span>
+                IA Recommandation
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a th:href="@{/logout}">
+                <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width:18px;height:18px;vertical-align:middle;margin-right:8px;">
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar">
+            <h1>🤖 Recommandation Intelligente de Parking</h1>
+        </div>
+
+        <div class="page-body">
+
+            <!-- Hero -->
+            <div class="ai-hero">
+                <h2>🧠 IA de Recommandation</h2>
+                <p>Notre algorithme analyse la <strong>distance</strong>, le <strong>prix</strong> et la <strong>disponibilité</strong> pour vous suggérer le parking optimal.</p>
+            </div>
+
+            <!-- Contrôles -->
+            <div class="ai-controls">
+
+                <!-- Localisation & Véhicule -->
+                <div class="control-card">
+                    <h4>📍 Votre position &amp; véhicule</h4>
+
+                    <div class="geo-section">
+                        <div class="form-group">
+                            <label class="form-label">Latitude</label>
+                            <input type="number" id="userLat" class="form-control" step="0.0001" placeholder="Ex: 36.8065">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Longitude</label>
+                            <input type="number" id="userLng" class="form-control" step="0.0001" placeholder="Ex: 10.1815">
+                        </div>
+                        <button class="btn-geo" onclick="detectLocation()">
+                            📡 GPS
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-top:1rem;">
+                        <label class="form-label">Type de véhicule</label>
+                        <select id="typeVehicule" class="form-control">
+                            <option value="VOITURE">🚗 Voiture</option>
+                            <option value="MOTO">🏍️ Moto</option>
+                            <option value="CAMION">🚛 Camion</option>
+                            <option value="VAN">🚐 Van</option>
+                        </select>
+                    </div>
+
+                    <div id="geoStatus" style="font-size:.8rem;color:var(--text-muted);margin-top:.5rem;"></div>
+                </div>
+
+                <!-- Poids IA -->
+                <div class="control-card">
+                    <h4>⚖️ Ajuster les priorités IA</h4>
+                    <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">
+                        Personnalisez l'importance de chaque critère selon vos préférences.
+                    </p>
+
+                    <div class="weight-slider-wrap">
+                        <label>🗺️ Distance <span id="wDistVal">40</span>%</label>
+                        <input type="range" id="wDist" min="0" max="100" value="40" oninput="updateSliderDisplay()">
+                    </div>
+                    <div class="weight-slider-wrap">
+                        <label>💰 Prix <span id="wPrixVal">35</span>%</label>
+                        <input type="range" id="wPrix" min="0" max="100" value="35" oninput="updateSliderDisplay()">
+                    </div>
+                    <div class="weight-slider-wrap">
+                        <label>✅ Disponibilité <span id="wDispoVal">25</span>%</label>
+                        <input type="range" id="wDispo" min="0" max="100" value="25" oninput="updateSliderDisplay()">
+                    </div>
+
+                    <div id="weightTotal" class="weight-total-warn"></div>
+
+                    <button class="btn-search" onclick="lancerRecherche()">
+                        🤖 Lancer la recommandation IA
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zone résultats -->
+            <div id="aiLoading" class="ai-loading">
+                <div class="ai-spinner"></div>
+                <p>🧠 L'IA analyse les parkings...</p>
+            </div>
+
+            <div id="aiEmpty" class="ai-empty">
+                <div class="ai-empty-icon">😕</div>
+                <p>Aucun parking trouvé avec une position GPS. Vérifiez que des parkings sont configurés avec des coordonnées.</p>
+            </div>
+
+            <div id="aiResults" class="results-grid"></div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+// ===== GÉOLOCALISATION =====
+function detectLocation() {
+    const status = document.getElementById('geoStatus');
+    if (!navigator.geolocation) {
+        status.textContent = '❌ Géolocalisation non supportée.';
+        return;
+    }
+    status.innerHTML = '📡 Détection en cours...';
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            document.getElementById('userLat').value = pos.coords.latitude.toFixed(6);
+            document.getElementById('userLng').value = pos.coords.longitude.toFixed(6);
+            status.innerHTML = '✅ Position détectée avec succès !';
+            setTimeout(() => status.textContent = '', 3000);
+        },
+        err => {
+            status.innerHTML = '⚠️ Impossible de détecter la position. Saisissez manuellement.';
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+    );
+}
+
+// ===== SLIDERS =====
+function updateSliderDisplay() {
+    const wd = parseInt(document.getElementById('wDist').value);
+    const wp = parseInt(document.getElementById('wPrix').value);
+    const wv = parseInt(document.getElementById('wDispo').value);
+    document.getElementById('wDistVal').textContent = wd;
+    document.getElementById('wPrixVal').textContent = wp;
+    document.getElementById('wDispoVal').textContent = wv;
+
+    const totalEl = document.getElementById('weightTotal');
+    const total = wd + wp + wv;
+    totalEl.className = 'weight-total-warn';
+    if (total === 100) {
+        totalEl.classList.add('warn-good');
+        totalEl.textContent = `✅ Total : ${total}% — Les poids sont équilibrés.`;
+    } else {
+        totalEl.classList.add('warn-bad');
+        totalEl.textContent = `⚠️ Total : ${total}% (les poids seront normalisés automatiquement)`;
+    }
+}
+updateSliderDisplay();
+
+// ===== RECOMMANDATION =====
+function lancerRecherche() {
+    const lat = parseFloat(document.getElementById('userLat').value);
+    const lng = parseFloat(document.getElementById('userLng').value);
+
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        alert('📍 Veuillez renseigner votre position (latitude/longitude) ou utiliser le bouton GPS.');
+        return;
+    }
+
+    const typeVehicule = document.getElementById('typeVehicule').value;
+    const wDist  = document.getElementById('wDist').value;
+    const wPrix  = document.getElementById('wPrix').value;
+    const wDispo = document.getElementById('wDispo').value;
+
+    document.getElementById('aiResults').innerHTML = '';
+    document.getElementById('aiLoading').style.display = 'block';
+    document.getElementById('aiEmpty').style.display = 'none';
+
+    const url = `/client/ai/recommander?lat=${lat}&lng=${lng}&typeVehicule=${typeVehicule}&wDist=${wDist}&wPrix=${wPrix}&wDispo=${wDispo}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('aiLoading').style.display = 'none';
+            if (!data || data.length === 0) {
+                document.getElementById('aiEmpty').style.display = 'block';
+                return;
+            }
+            renderResults(data);
+        })
+        .catch(err => {
+            document.getElementById('aiLoading').style.display = 'none';
+            document.getElementById('aiResults').innerHTML =
+                `<div class="alert alert-danger">❌ Erreur lors de la recommandation : ${err.message}</div>`;
+        });
+}
+
+function renderResults(parkings) {
+    const container = document.getElementById('aiResults');
+    container.innerHTML = '';
+
+    const rankEmojis = ['🥇', '🥈', '🥉'];
+    const rankClasses = ['rank-1', 'rank-2', 'rank-3'];
+
+    parkings.forEach((p, idx) => {
+        const rankEmoji = rankEmojis[idx] || `#${idx + 1}`;
+        const rankClass = rankClasses[idx] || '';
+        const niveauClass = `niveau-${p.niveauRecommandation || 'MOYEN'}`;
+        const niveauLabel = {
+            EXCELLENT: 'Excellent', BON: 'Bon', MOYEN: 'Moyen', FAIBLE: 'Faible'
+        }[p.niveauRecommandation] || 'Moyen';
+
+        const distanceLabel = p.distanceKm < 1
+            ? `${Math.round(p.distanceKm * 1000)} m`
+            : `${p.distanceKm.toFixed(1)} km`;
+
+        const prixLabel = p.prixHeure > 0 ? `${p.prixHeure.toFixed(2)} DT/h` : 'N/D';
+        const dispoLabel = `${p.placesDisponibles} / ${p.capaciteTotale} places`;
+
+        const card = document.createElement('div');
+        card.className = `reco-card ${rankClass}`;
+        card.innerHTML = `
+            <div class="reco-header">
+                <div class="rank-badge">${rankEmoji}</div>
+                <div style="flex:1;">
+                    <p class="reco-name">${p.nom}</p>
+                    <p class="reco-addr">📍 ${p.adresse}</p>
+                </div>
+                <div class="score-total-wrap">
+                    <div class="score-total-num">${p.scoreTotal}</div>
+                    <div class="score-total-label">Score IA /100</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:.5rem;">
+                <span class="niveau-badge ${niveauClass}">${niveauLabel}</span>
+            </div>
+
+            <div class="reco-meta">
+                <span>🗺️ ${distanceLabel}</span>
+                <span>💰 ${prixLabel}</span>
+                <span>🅿️ ${dispoLabel}</span>
+            </div>
+
+            <div class="scores-bars">
+                <div class="score-bar-wrap">
+                    <div class="score-bar-label">
+                        <span>🗺️ Distance</span>
+                        <strong>${p.scoreDistance}/100</strong>
+                    </div>
+                    <div class="score-bar-bg">
+                        <div class="score-bar-fill bar-dist" data-score="${p.scoreDistance}"></div>
+                    </div>
+                </div>
+                <div class="score-bar-wrap">
+                    <div class="score-bar-label">
+                        <span>💰 Prix</span>
+                        <strong>${p.scorePrix}/100</strong>
+                    </div>
+                    <div class="score-bar-bg">
+                        <div class="score-bar-fill bar-prix" data-score="${p.scorePrix}"></div>
+                    </div>
+                </div>
+                <div class="score-bar-wrap">
+                    <div class="score-bar-label">
+                        <span>✅ Dispo</span>
+                        <strong>${p.scoreDisponibilite}/100</strong>
+                    </div>
+                    <div class="score-bar-bg">
+                        <div class="score-bar-fill bar-dispo" data-score="${p.scoreDisponibilite}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reco-explication">${p.explication}</div>
+
+            <a href="/client/reserver?parkingId=${p.id}" class="btn-reserver-ai">
+                🅿️ Réserver ce parking
+            </a>
+        `;
+
+        container.appendChild(card);
+    });
+
+    // Animer les barres
+    setTimeout(() => {
+        document.querySelectorAll('.score-bar-fill').forEach(bar => {
+            bar.style.width = bar.dataset.score + '%';
+        });
+    }, 100);
+}
+
+// Détection auto au chargement
+detectLocation();
+</script>
+</body>
+</html>

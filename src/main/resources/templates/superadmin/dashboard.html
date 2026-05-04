@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard SuperAdmin – ParkManager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .charts-grid-summary {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .chart-container-mini {
+            background: var(--bg-surface);
+            padding: 1.25rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-neon);
+            border: 1px solid var(--border-glow);
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-wrapper-mini {
+            flex: 1;
+            position: relative;
+            min-height: 150px;
+        }
+        @media (max-width: 1024px) {
+            .charts-grid-summary {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-wrapper">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🅿️</div>
+            <div>
+                <h2>ParkManager</h2>
+                <small>Super Administration</small>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/superadmin/dashboard}" class="active">
+                <span class="nav-icon">📊</span> Tableau de bord
+            </a>
+            <a th:href="@{/superadmin/carte}">
+                <span class="nav-icon">
+                    <img th:src="@{/images/emplacement.png}" alt="Carte" style="width: 18px; height: 18px; vertical-align: middle;">
+                </span> 
+                Voir la carte
+            </a>
+            <a th:href="@{/superadmin/parkings}">
+                <span class="nav-icon">🏢</span> Parkings
+            </a>
+            <a th:href="@{/superadmin/admins}">
+                <span class="nav-icon">👤</span> Administrateurs
+            </a>
+            <a th:href="@{/superadmin/clients}">
+                <span class="nav-icon">👥</span> Clients
+            </a>
+            <a th:href="@{/superadmin/statistiques}">
+                <span class="nav-icon">📈</span> Statistiques
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a th:href="@{/logout}">
+                <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar">
+            <h1>📊 Vue d'ensemble</h1>
+            <div class="topbar-right">
+                <div class="user-chip">
+                    <div class="user-avatar">SA</div>
+                    <span sec:authentication="name">SuperAdmin</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-body">
+            <!-- STATS CARDS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">🏢</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${parkings.size()}">0</div>
+                        <div class="stat-label">Parkings</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">👤</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${totalAdmins}">0</div>
+                        <div class="stat-label">Admins</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <img th:src="@{/images/verifier.png}" alt="Check" style="width: 24px; height: 24px; vertical-align: middle;">
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${totalReservations}">0</div>
+                        <div class="stat-label">Réservations</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon teal">💰</div>
+                    <div class="stat-info">
+                        <div class="stat-value" th:text="${#numbers.formatDecimal(totalRevenus, 1, 2) + ' DT'}">0 DT</div>
+                        <div class="stat-label">Revenus</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUMMARY CHARTS -->
+            <div class="charts-grid-summary">
+                <div class="chart-container-mini">
+                    <h3 style="margin-bottom:1rem; font-size:1rem; font-weight:700;">
+                        <img th:src="@{/images/calendrier.png}" alt="Calendrier" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                        Activité des réservations
+                    </h3>
+                    <div class="chart-wrapper-mini">
+                        <canvas id="miniResChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container-mini">
+                    <h3 style="margin-bottom:1rem; font-size:1rem; font-weight:700;">🚗 Occupation globale</h3>
+                    <div class="chart-wrapper-mini">
+                        <canvas id="miniOccChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LISTE PARKINGS -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🏢 État des Parkings</h3>
+                    <a th:href="@{/superadmin/parkings/nouveau}" class="btn btn-primary btn-sm">
+                        <img th:src="@{/images/ajouter.png}" alt="+" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; filter: brightness(0) invert(1);">
+                        Nouveau
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Administrateur</th>
+                                <th>Capacité</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p : ${parkings}">
+                                <td><strong th:text="${p.nom}"></strong></td>
+                                <td>
+                                    <span th:if="${p.adminParking != null}" th:text="${p.adminParking.nom}"></span>
+                                    <span th:unless="${p.adminParking != null}" class="badge badge-secondary">Libre</span>
+                                </td>
+                                <td><span class="badge badge-info" th:text="${p.capacite + ' pl.'}"></span></td>
+                                <td>
+                                    <a th:href="@{/superadmin/carte(focusId=${p.id})}" class="btn btn-secondary btn-sm">
+                                        <img th:src="@{/images/emplacement.png}" alt="Carte" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                                        Voir
+                                    </a>
+                                    <a th:href="@{/superadmin/parkings/modifier/{id}(id=${p.id})}" class="btn btn-warning btn-sm">✏️</a>
+                                    <a th:href="@{/superadmin/parkings/supprimer/{id}(id=${p.id})}" class="btn btn-danger btn-sm"
+                                       onclick="return confirm('Supprimer ce parking ?')">
+                                        <img th:src="@{/images/supprimer.png}" alt="🗑️" style="width: 14px; height: 14px; filter: brightness(0) invert(1);">
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script th:inline="javascript">
+    /* Data from Thymeleaf - Safe extraction */
+    const resLabels = /*[[${reservationsByDay.keySet()}]]*/ [];
+    const resValues = /*[[${reservationsByDay.values()}]]*/ [];
+    const libres = /*[[${placesLibres}]]*/ 0;
+    const occupees = /*[[${placesOccupees}]]*/ 0;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Line Chart Summary
+        new Chart(document.getElementById('miniResChart'), {
+            type: 'line',
+            data: {
+                labels: resLabels.length > 0 ? resLabels : ['Aucune donnée'],
+                datasets: [{
+                    label: 'Réservations',
+                    data: resValues.length > 0 ? resValues : [0],
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#8b5cf6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+
+        // Doughnut Chart Summary
+        new Chart(document.getElementById('miniOccChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Libres', 'Occupées'],
+                datasets: [{
+                    data: [libres, occupees],
+                    backgroundColor: ['#10b981', '#f43f5e'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10 } } },
+                cutout: '75%'
+            }
+        });
+    });
+</script>
+</body>
+</html>

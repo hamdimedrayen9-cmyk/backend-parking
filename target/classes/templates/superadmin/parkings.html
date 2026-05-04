@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Parkings – ParkManager</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app-wrapper">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🅿️</div>
+            <div><h2>ParkManager</h2><small>Super Administration</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/superadmin/dashboard}"><span class="nav-icon">📊</span> Tableau de bord</a>
+            <a th:href="@{/superadmin/carte}">
+                <span class="nav-icon">
+                    <img th:src="@{/images/emplacement.png}" alt="Carte" style="width: 18px; height: 18px; vertical-align: middle;">
+                </span> 
+                Voir la carte
+            </a>
+            <a th:href="@{/superadmin/parkings}" class="active"><span class="nav-icon">🏢</span> Parkings</a>
+            <a th:href="@{/superadmin/admins}"><span class="nav-icon">👤</span> Administrateurs</a>
+            <a th:href="@{/superadmin/clients}"><span class="nav-icon">👥</span> Clients</a>
+            <a th:href="@{/superadmin/statistiques}"><span class="nav-icon">📈</span> Statistiques</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a th:href="@{/logout}">
+                <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar">
+            <h1>🏢 Gestion des Parkings</h1>
+            <a th:href="@{/superadmin/parkings/nouveau}" class="btn btn-primary">
+                <img th:src="@{/images/ajouter.png}" alt="+" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px; filter: brightness(0) invert(1);">
+                Nouveau parking
+            </a>
+        </div>
+        <div class="page-body">
+            <div th:if="${success}" class="alert alert-success">✅ <span th:text="${success}"></span></div>
+            <div th:if="${error}" class="alert alert-danger">⚠️ <span th:text="${error}"></span></div>
+
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Nom</th><th>Adresse</th>
+                                <th>Capacité</th><th>Administrateur</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p : ${parkings}">
+                                <td class="text-muted" th:text="${p.id}"></td>
+                                <td><strong th:text="${p.nom}"></strong></td>
+                                <td th:text="${p.adresse}"></td>
+                                <td><span class="badge badge-info" th:text="${p.capacite}"></span></td>
+                                <td>
+                                    <span th:if="${p.latitude != null && p.longitude != null}" class="badge badge-success" title="Coordonnées configurées">
+                                        <img th:src="@{/images/emplacement.png}" alt="OK" style="width: 12px; height: 12px; filter: brightness(0) invert(1);"> OK
+                                    </span>
+                                    <span th:unless="${p.latitude != null && p.longitude != null}" class="badge badge-warning" title="Coordonnées manquantes">
+                                        <img th:src="@{/images/emplacement.png}" alt="?" style="width: 12px; height: 12px; filter: brightness(0) invert(1);"> ?
+                                    </span>
+                                    <span th:if="${p.adminParking != null}">
+                                        <span th:text="${p.adminParking.nom}"></span>
+                                        <br><small class="text-muted" th:text="${p.adminParking.email}"></small>
+                                    </span>
+                                    <span th:unless="${p.adminParking != null}" class="badge badge-secondary">Non assigné</span>
+                                </td>
+                                <td class="flex gap-2">
+                                    <a th:href="@{/superadmin/carte(focusId=${p.id})}" class="btn btn-secondary btn-sm" title="Voir sur la carte">
+                                        <img th:src="@{/images/emplacement.png}" alt="Carte" style="width: 14px; height: 14px; vertical-align: middle;">
+                                        Voir
+                                    </a>
+                                    <a th:href="@{/superadmin/parkings/modifier/{id}(id=${p.id})}" class="btn btn-warning btn-sm">✏️ Modifier</a>
+                                    <a th:href="@{/superadmin/parkings/supprimer/{id}(id=${p.id})}" class="btn btn-danger btn-sm"
+                                       onclick="return confirm('Supprimer ce parking ?')">
+                                        <img th:src="@{/images/supprimer.png}" alt="🗑️" style="width: 14px; height: 14px; filter: brightness(0) invert(1);">
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(parkings)}">
+                                <td colspan="6"><div class="empty-state"><div class="empty-icon">🏢</div>Aucun parking</div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

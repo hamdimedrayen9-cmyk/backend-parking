@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Réservations – ParkManager</title>
+<link rel="stylesheet" th:href="@{/css/style.css}"></head>
+<body>
+<div class="app-wrapper">
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="brand-icon">🅿️</div>
+            <div><h2 th:text="${parking.nom}">Parking</h2><small>Administration</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}"><span class="nav-icon">📊</span> Tableau de bord</a>
+            <a th:href="@{/admin/places}"><span class="nav-icon">🔲</span> Places</a>
+            <a th:href="@{/admin/tarifs}"><span class="nav-icon">💰</span> Tarifs</a>
+            <a th:href="@{/admin/reservations}" class="active"><span class="nav-icon">📋</span> Réservations</a>
+            <a th:href="@{/admin/statistiques}"><span class="nav-icon">📈</span> Statistiques</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a th:href="@{/logout}">
+                <img th:src="@{/images/se-deconnecter.png}" alt="Déconnexion" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 8px;">
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+    <main class="main-content">
+        <div class="topbar">
+            <div class="topbar">
+                <h1>
+                    <img th:src="@{/images/verifier.png}" alt="Check" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+                    Gestion des Réservations
+                </h1>
+            </div>
+            <div class="topbar-right">
+                <div class="flex gap-2">
+                    <div class="dropdown-export">
+                        <button class="btn btn-outline-primary btn-sm">📋 Exporter ▼</button>
+                        <div class="dropdown-content">
+                            <a th:href="@{/admin/export/reservations/excel}">Excel (.xlsx)</a>
+                            <a th:href="@{/admin/export/reservations/pdf}">PDF (.pdf)</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div th:if="${success}" class="alert alert-success">✅ <span th:text="${success}"></span></div>
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Client</th><th>Véhicule</th><th>Place</th>
+                                <th>Début</th><th>Fin</th><th>Montant</th><th>Statut</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="r : ${reservations}">
+                                <td class="text-muted" th:text="${r.id}"></td>
+                                <td>
+                                    <strong th:text="${r.client.nom}"></strong><br>
+                                    <small class="text-muted" th:text="${r.client.email}"></small>
+                                </td>
+                                <td th:text="${r.vehicule.immatriculation}"></td>
+                                <td th:text="${'N°' + r.place.numero + ' (' + r.place.type + ')'}"></td>
+                                <td th:text="${#temporals.format(r.dateDebut,'dd/MM/yy HH:mm')}"></td>
+                                <td th:text="${#temporals.format(r.dateFin,'dd/MM/yy HH:mm')}"></td>
+                                <td>
+                                    <strong th:if="${r.paiement != null}" th:text="${#numbers.formatDecimal(r.paiement.montant,1,2) + ' DT'}"></strong>
+                                    <span th:unless="${r.paiement != null}" class="text-muted">–</span>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${r.statut == 'EN_ATTENTE' ? 'badge-warning' :
+                                                           r.statut == 'VALIDEE' ? 'badge-success' :
+                                                           r.statut == 'REFUSEE' ? 'badge-danger' :
+                                                           r.statut == 'TERMINEE' ? 'badge-secondary' : 'badge-danger'}"
+                                          th:text="${r.statut}"></span>
+                                </td>
+                                <td class="flex gap-2">
+                                    <a th:if="${r.statut == 'EN_ATTENTE'}"
+                                       th:href="@{/admin/reservations/valider/{id}(id=${r.id})}"
+                                       class="btn btn-success btn-sm">✅ Valider</a>
+                                    <a th:if="${r.statut == 'EN_ATTENTE'}"
+                                       th:href="@{/admin/reservations/refuser/{id}(id=${r.id})}"
+                                       class="btn btn-danger btn-sm">
+                                        <img th:src="@{/images/annuler.png}" alt="X" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 5px; filter: brightness(0) invert(1);">
+                                        Refuser
+                                    </a>
+                                    <a th:href="@{/admin/reservations/supprimer/{id}(id=${r.id})}"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette réservation ?')">
+                                         <img th:src="@{/images/supprimer.png}" alt="🗑️" style="width: 14px; height: 14px; filter: brightness(0) invert(1);">
+                                     </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(reservations)}">
+                                <td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div>Aucune réservation</div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
